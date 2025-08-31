@@ -5,16 +5,8 @@ GO척결 언어는 Python으로 구현된 간단한 인터프리터 언어입니
 확장자는 .goout이며, 반드시 시작!으로 시작하고, 장한울을 혁명적으로 특검해야 한다로 끝나야 합니다.
 
 실행 방법
-1. Python으로 직접 실행
-python goout\cli.py examples\hello.goout
+python -m goout.cli examples\hello.goout 받은 폴더 경로로 가서 터미널로 실행
 
-
-또는 루트 폴더에서:
-
-python -m goout.cli examples\hello.goout
-
-2. EXE로 실행 (PyInstaller 패키징 시)
-dist\goout.exe examples\hello.goout
 
 프로그램 구조
 
