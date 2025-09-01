@@ -5,11 +5,10 @@ from .errors import GoOutSyntaxError
 RE_START = re.compile(r'^\s*시작!\s*$')
 RE_END   = re.compile(r'^\s*장한울을 혁명적으로 특검해야 한다\s*$')
 
-# 기본 토큰 패턴 (런타임에서도 씀)
+# 런타임에서도 씀
 STR_RE = re.compile(r'"([^"\\]|\\.)*"')
 NUM_RE = re.compile(r'\d+(?:\.\d+)?')
 ID_RE  = re.compile(r'[A-Za-z_가-힣]\w*')
-
 
 def parse_program(src: str):
     lines = [l.rstrip() for l in src.splitlines()]
@@ -42,8 +41,7 @@ def parse_program(src: str):
                     in_str = True
                     buf.append(ch)
                 elif ch == ',':
-                    out.append(''.join(buf).strip())
-                    buf = []
+                    out.append(''.join(buf).strip()); buf = []
                 else:
                     buf.append(ch)
         tail = ''.join(buf).strip()
@@ -51,7 +49,6 @@ def parse_program(src: str):
             out.append(tail)
         return out
 
-    # 블록 파서
     def parse_block():
         nonlocal i
         stmts = []
@@ -59,16 +56,13 @@ def parse_program(src: str):
             orig = body[i]
             line = orig.strip()
 
-            # --- ★ 한 줄에 '}'와 그 뒤 토큰이 같이 있는 경우를 분해 ★ ---
-            # 예) "   } GO척결.디떨이 아니다?! {"
+            # 한 줄에 '}'와 다음 토큰이 같이 있는 경우 분해
             m_split = re.match(r'^\s*\}\s*(.+)$', orig)
             if m_split:
-                # 현재 줄을 '}' 로 바꾸고, 다음 줄에 나머지를 삽입
                 body[i] = '}'
                 body.insert(i + 1, m_split.group(1))
-                line = '}'  # 지금 회차는 '}' 처리
+                line = '}'
 
-            # 블록 닫기
             if line == '}':
                 i += 1
                 break
@@ -77,26 +71,22 @@ def parse_program(src: str):
                 i += 1
                 continue
 
-            # 만약 (if) { ... } [디떨이 아니다?! { ... }]
+            # 만약 / 디떨이 아니다?!
             m = re.match(r'^GO척결\.만약\s*\((.*)\)\s*\{\s*$', line)
             if m:
                 cond = m.group(1).strip()
                 i += 1
                 then_body = parse_block()
-
-                # else 는 바로 '다음 줄'에서만 인식
                 else_body = None
                 if i < len(body):
                     nxt = body[i].strip()
-                    # 공백 변형 허용: "GO척결.디떨이 아니다?!   {"
                     if re.match(r'^GO척결\.디떨이 아니다\?!\s*\{\s*$', nxt):
                         i += 1
                         else_body = parse_block()
-
                 stmts.append(("if", cond, then_body, else_body))
                 continue
 
-            # 반복<var>(start,end) { ... }
+            # 반복<var>(start, end) { ... }
             m = re.match(r'^GO척결\.반복([A-Za-z_가-힣]\w*)\s*\((.*)\)\s*\{\s*$', line)
             if m:
                 var = m.group(1)
@@ -124,6 +114,17 @@ def parse_program(src: str):
             m = re.match(r'^GO척결\.출력\s*\((.*)\)\s*$', line)
             if m:
                 stmts.append(("print", m.group(1).strip()))
+                i += 1
+                continue
+
+            # 입력: GO척결.입력(변수명, "프롬프트", "정수|실수|문자열")
+            m = re.match(r'^GO척결\.입력\s*\(\s*([A-Za-z_가-힣]\w*)\s*(?:,(.*))?\)\s*$', line)
+            if m:
+                name = m.group(1)
+                rest = (m.group(2) or "").strip()
+                args = [a.strip() for a in split_commas(rest)] if rest else []
+                # args[0]=프롬프트(표현식, 옵션), args[1]=타입 문자열(옵션)
+                stmts.append(("input", name, args))
                 i += 1
                 continue
 
